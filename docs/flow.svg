@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 310" width="1280" height="310" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif">
+  <rect width="1280" height="310" rx="24" fill="#0b0b0c"/>
+  <text x="40" y="56" fill="#ffffff" font-size="24" font-weight="700">What happens when you press Push</text>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#36ff9f"/>
+    </marker>
+  </defs>
+
+  <g font-size="14" fill="#a1a1a8">
+    <rect x="20" y="90" width="180" height="180" rx="16" fill="#1c1c1e"/>
+    <circle cx="48" cy="124" r="16" fill="#36ff9f"/><text x="48" y="129" fill="#333" font-size="15" font-weight="700" text-anchor="middle">1</text>
+    <text x="40" y="178" fill="#fff" font-size="18" font-weight="700">Pick a script</text>
+    <text x="40" y="206">The portal asset is</text><text x="40" y="226">remembered for each</text><text x="40" y="246">resource name</text>
+
+    <rect x="232" y="90" width="180" height="180" rx="16" fill="#1c1c1e"/>
+    <circle cx="260" cy="124" r="16" fill="#36ff9f"/><text x="260" y="129" fill="#333" font-size="15" font-weight="700" text-anchor="middle">2</text>
+    <text x="252" y="178" fill="#fff" font-size="18" font-weight="700">Bump version</text>
+    <text x="252" y="206">Writes the version</text><text x="252" y="226">into fxmanifest.lua,</text><text x="252" y="246">-b1 marks a beta</text>
+
+    <rect x="444" y="90" width="180" height="180" rx="16" fill="#1c1c1e"/>
+    <circle cx="472" cy="124" r="16" fill="#36ff9f"/><text x="472" y="129" fill="#333" font-size="15" font-weight="700" text-anchor="middle">3</text>
+    <text x="464" y="178" fill="#fff" font-size="18" font-weight="700">Zip</text>
+    <text x="464" y="206">Skips .git, editor</text><text x="464" y="226">folders and your</text><text x="464" y="246">.portalignore rules</text>
+
+    <rect x="656" y="90" width="180" height="180" rx="16" fill="#1c1c1e"/>
+    <circle cx="684" cy="124" r="16" fill="#36ff9f"/><text x="684" y="129" fill="#333" font-size="15" font-weight="700" text-anchor="middle">4</text>
+    <text x="676" y="178" fill="#fff" font-size="18" font-weight="700">Free a slot</text>
+    <text x="676" y="206">The portal keeps 5</text><text x="676" y="226">versions, the oldest</text><text x="676" y="246">one is removed</text>
+
+    <rect x="868" y="90" width="180" height="180" rx="16" fill="#1c1c1e"/>
+    <circle cx="896" cy="124" r="16" fill="#36ff9f"/><text x="896" y="129" fill="#333" font-size="15" font-weight="700" text-anchor="middle">5</text>
+    <text x="888" y="178" fill="#fff" font-size="18" font-weight="700">Upload</text>
+    <text x="888" y="206">2 MB chunks, then</text><text x="888" y="226">waits until the</text><text x="888" y="246">version is active</text>
+
+    <rect x="1080" y="90" width="180" height="180" rx="16" fill="#1c1c1e"/>
+    <rect x="1080.5" y="90.5" width="179" height="179" rx="15.5" fill="none" stroke="#3a3a3d" stroke-dasharray="6 6"/>
+    <circle cx="1108" cy="124" r="16" fill="#2c2c2e"/><text x="1108" y="129" fill="#e8e9eb" font-size="15" font-weight="700" text-anchor="middle">6</text>
+    <text x="1100" y="178" fill="#fff" font-size="18" font-weight="700">GitHub</text>
+    <text x="1100" y="206">Optional: commits</text><text x="1100" y="226">only this folder and</text><text x="1100" y="246">pushes the branch</text>
+  </g>
+
+  <g stroke="#36ff9f" stroke-width="2.5" marker-end="url(#arrow)">
+    <line x1="204" y1="180" x2="226" y2="180"/>
+    <line x1="416" y1="180" x2="438" y2="180"/>
+    <line x1="628" y1="180" x2="650" y2="180"/>
+    <line x1="840" y1="180" x2="862" y2="180"/>
+    <line x1="1052" y1="180" x2="1074" y2="180"/>
+  </g>
+</svg>

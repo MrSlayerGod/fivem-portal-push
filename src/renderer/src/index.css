@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+@theme {
+  --color-bg: #000000;
+  --color-group: #1c1c1e;
+  --color-elevated: #2c2c2e;
+  --color-fill: rgba(120, 120, 128, 0.24);
+  --color-fill-strong: rgba(120, 120, 128, 0.36);
+  --color-separator: rgba(84, 84, 88, 0.65);
+  --color-label: #ffffff;
+  --color-label-2: rgba(235, 235, 245, 0.6);
+  --color-label-3: rgba(235, 235, 245, 0.3);
+  --color-accent: #36ff9f;
+  --color-accent-hover: #2bd07f;
+  --color-on-accent: #333333;
+  --color-red: #ff4245;
+  --color-orange: #ff9230;
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, monospace;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-headline: 15px;
+  --text-headline--line-height: 20px;
+  --text-title: 26px;
+  --text-title--line-height: 32px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-label);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.4;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  .selectable {
+    user-select: text;
+  }
+
+  :where(button, [role='button'], [role='switch'], a, [tabindex]):not(input):focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(235, 235, 245, 0.18);
+    border-radius: 12px;
+    border: 4px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(235, 235, 245, 0.3);
+  }
+}

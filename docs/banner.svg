@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif">
+  <rect width="1280" height="400" rx="24" fill="#0b0b0c"/>
+  <rect x="0.5" y="0.5" width="1279" height="399" rx="23.5" fill="none" stroke="#2a2a2d"/>
+
+  <g transform="translate(96 88) scale(0.875)">
+    <rect width="256" height="256" rx="58" fill="#1c1c1e"/>
+    <path d="M60 142v34a24 24 0 0 0 24 24h88a24 24 0 0 0 24-24v-34" fill="none" stroke="#e8e9eb" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M128 158V58M88 98l40-40 40 40" fill="none" stroke="#36ff9f" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="372" y="168" fill="#ffffff" font-size="64" font-weight="700" letter-spacing="-1">FiveM Portal Push</text>
+  <text x="374" y="216" fill="#a1a1a8" font-size="24">Bump, zip and ship FiveM resources to the Cfx.re Portal</text>
+  <text x="374" y="248" fill="#a1a1a8" font-size="24">and GitHub with one click.</text>
+
+  <g font-size="17" font-weight="600">
+    <rect x="374" y="282" width="196" height="38" rx="19" fill="#1c1c1e"/>
+    <text x="472" y="307" fill="#e8e9eb" text-anchor="middle">fxmanifest version</text>
+    <rect x="584" y="282" width="168" height="38" rx="19" fill="#1c1c1e"/>
+    <text x="668" y="307" fill="#e8e9eb" text-anchor="middle">Cfx.re Portal</text>
+    <rect x="766" y="282" width="168" height="38" rx="19" fill="#1c1c1e"/>
+    <text x="850" y="307" fill="#e8e9eb" text-anchor="middle">Beta releases</text>
+    <rect x="948" y="282" width="120" height="38" rx="19" fill="#1c1c1e"/>
+    <text x="1008" y="307" fill="#e8e9eb" text-anchor="middle">GitHub</text>
+  </g>
+</svg>

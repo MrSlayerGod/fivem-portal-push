@@ -1,0 +1,21 @@
+appId: com.fivem.portalpush
+productName: FiveM Portal Push
+directories:
+  output: dist
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: extension
+    to: extension
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: FiveM-Portal-Push-Setup-${version}.${ext}
+portable:
+  artifactName: FiveM-Portal-Push-${version}-portable.${ext}
