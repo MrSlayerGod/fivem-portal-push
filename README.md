@@ -27,7 +27,7 @@ Shipping an update to a paid FiveM resource used to look like this: open `fxmani
 - **Knows what is live.** Shows the versions already on the portal next to the one in `fxmanifest.lua` and suggests the next version, so you never upload the same number twice.
 - **Beta releases.** A version ending in `-b1`, `-b2`, `-beta1` or `-rc1` is uploaded as a release candidate.
 - **Handles the 5 version limit.** When the asset already has five versions, the oldest one is removed before the upload. The list shows which one beforehand.
-- **Changelog from git.** Prefilled with the files that changed since your last push, in a format your customers can follow:
+- **Changelog from git.** Prefilled with the files that changed since your last push. The portal renders release notes as Markdown, so the list goes inside a code block to keep one file per line:
   ```
   modified:   client/main.lua
   modified:   fxmanifest.lua

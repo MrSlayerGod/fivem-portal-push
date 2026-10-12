@@ -101,7 +101,7 @@ export function formatChanges(files: ChangedFile[], manifestChanged: boolean): s
       .map((f) => line(g.label, f.file))
   )
   for (const b of [...builds].sort()) lines.push(line('modified:', `${b} (delete the '${b}' folder before updating the '${b}' folder)`))
-  return lines.join('\n')
+  return lines.length ? ['```', ...lines, '```'].join('\n') : ''
 }
 
 export function useZipTree(path: string) {

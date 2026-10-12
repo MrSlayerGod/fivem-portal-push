@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FiveM Portal Push login</title>
+    <style>
+      body { margin: 0; padding: 22px; background: #1c1c1e; color: #fff; font: 14px/1.45 'Segoe UI', system-ui, sans-serif; }
+      h1 { margin: 0 0 8px; font-size: 17px; font-weight: 600; }
+      p { margin: 0; color: rgba(235, 235, 245, 0.6); }
+      .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+      button { height: 32px; padding: 0 16px; border: 0; border-radius: 999px; font: 600 14px 'Segoe UI', system-ui, sans-serif; cursor: pointer; }
+      #deny { background: rgba(120, 120, 128, 0.24); color: #fff; }
+      #allow { background: #36ff9f; color: #333; }
+      button:focus-visible { outline: 2px solid #36ff9f; outline-offset: 2px; }
+    </style>
+  </head>
+  <body>
+    <h1>Sign in FiveM Portal Push?</h1>
+    <p>FiveM Portal Push wants to use your Cfx.re forum login to open a portal session. Only allow this if you just clicked Log in with browser in the app.</p>
+    <div class="row">
+      <button id="deny">Deny</button>
+      <button id="allow">Allow</button>
+    </div>
+    <script src="confirm.js"></script>
+  </body>
+</html>
