@@ -2,6 +2,13 @@
 
 All notable changes to FiveM Portal Push. Versions follow [semantic versioning](https://semver.org/); the newest is on top.
 
+## 1.1.2 - 2026-10-16
+
+### Security
+
+- Files that usually hold passwords or keys are never zipped, in the script folder or in extra content: `server.cfg`, `.env*`, `.git`, `.ssh`, `.gnupg`, `.aws`, `.git-credentials`, `.npmrc`, `id_rsa*`, `id_ed25519*`, `id_ecdsa*`, `*.key`, `*.pem`, `*.pfx`, `*.p12`. A `.portalbundle` entry that points at one of them is refused.
+- Your home folder, or a folder that holds it, no longer counts as a place extra content may come from, even when it is a git repo or a script folder.
+
 ## 1.1.1 - 2026-10-16
 
 ### Security

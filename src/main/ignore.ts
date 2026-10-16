@@ -3,12 +3,25 @@ import { readdir, stat, writeFile } from 'fs/promises'
 import { join } from 'path'
 import picomatch from 'picomatch'
 import type { IgnoreRule, ZipEntry, ZipTree } from '../shared/types'
-import { bundleFile, resolveBundle } from './bundle'
+import { bundleFile, resolveBundle, secretPatterns } from './bundle'
 import { getConfig } from './store'
 
 export const ignoreFile = '.portalignore'
 
-export const defaultIgnore = ['.git/', '.github/', '.vscode/', '.idea/', 'node_modules/', '*.zip', ignoreFile, bundleFile, '.gitignore', '.DS_Store', 'Thumbs.db']
+export const defaultIgnore = [
+  '.git/',
+  '.github/',
+  '.vscode/',
+  '.idea/',
+  'node_modules/',
+  '*.zip',
+  ignoreFile,
+  bundleFile,
+  '.gitignore',
+  '.DS_Store',
+  'Thumbs.db',
+  ...secretPatterns.filter((p) => p !== '.git')
+]
 
 function readLines(dir: string): string[] {
   const file = join(dir, ignoreFile)

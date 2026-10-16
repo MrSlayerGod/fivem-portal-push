@@ -1,7 +1,9 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, realpathSync, statSync } from 'fs'
 import { rm, writeFile } from 'fs/promises'
+import { homedir } from 'os'
 import { basename, isAbsolute, join, relative, resolve } from 'path'
+import picomatch from 'picomatch'
 import type { BundleItem, BundleSpec } from '../shared/types'
 import { gitRoot } from './git'
 import { getConfig } from './store'
@@ -62,15 +64,49 @@ function realpath(p: string): string {
   }
 }
 
+/** Files and folders that hold credentials. Never zipped, and never accepted as extra content. */
+export const secretPatterns = [
+  '.git',
+  '.ssh',
+  '.gnupg',
+  '.aws',
+  '.env',
+  '.env.*',
+  'server.cfg',
+  '.git-credentials',
+  '.npmrc',
+  'id_rsa*',
+  'id_ed25519*',
+  'id_ecdsa*',
+  '*.pem',
+  '*.key',
+  '*.pfx',
+  '*.p12'
+]
+
+const isSecretName = picomatch(secretPatterns, { dot: true, nocase: true })
+
 /**
  * .portalbundle travels with the repo, so it is not trusted: a source must sit
  * inside the script's git repo or one of the script folders from the sidebar,
- * and never in the app's own data. Otherwise a cloned resource could put files
- * like SSH keys or saved tokens into a portal upload.
+ * and never in the app's own data. A root that is the home folder or holds it
+ * does not count, so a dotfiles repo can not open up ~/.ssh. Otherwise a cloned
+ * resource could put files like SSH keys or saved tokens into a portal upload.
  */
 async function allowedRoots(dir: string): Promise<string[]> {
   const repo = await gitRoot(dir).catch(() => null)
-  return [...getConfig().roots, repo, dir].filter((r): r is string => Boolean(r)).map(realpath)
+  const home = realpath(homedir())
+  return [...getConfig().roots, repo, dir]
+    .filter((r): r is string => Boolean(r))
+    .map(realpath)
+    .filter((root) => root === realpath(dir) || !isInside(root, home))
+}
+
+/** The part of a path below its root, checked name by name against the secret list. */
+function secretSegment(roots: string[], real: string): string | null {
+  const root = roots.filter((r) => isInside(r, real)).sort((a, b) => b.length - a.length)[0]
+  const parts = (root ? relative(root, real) : real).split(/[\\/]/).filter(Boolean)
+  return parts.find((p) => isSecretName(p)) ?? null
 }
 
 /** Resolves .portalbundle entries to absolute paths and zip names. Sizes are filled in by the caller. */
@@ -89,7 +125,9 @@ export async function resolveBundle(dir: string): Promise<BundleItem[]> {
     else {
       const real = realpath(path)
       item.dir = statSync(real).isDirectory()
+      const secret = secretSegment(roots, real)
       if (isInside(appData, real) || !roots.some((root) => isInside(root, real))) item.error = 'Outside the git repo and your script folders'
+      else if (secret) item.error = `${secret} can hold passwords or keys and is never zipped`
       else if (item.dir && isInside(real, realpath(dir))) item.error = 'Contains this script folder'
     }
     if (!item.error) {

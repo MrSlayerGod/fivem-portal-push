@@ -129,7 +129,7 @@ ui/src/
 client/test.lua
 ```
 
-Always skipped: `.git`, `.github`, `.vscode`, `.idea`, `node_modules`, `*.zip`, `.gitignore`, `.portalignore`, `.portalbundle`. Files that are not zipped are left out of the changelog too.
+Always skipped: `.git`, `.github`, `.vscode`, `.idea`, `node_modules`, `*.zip`, `.gitignore`, `.portalignore`, `.portalbundle`, and files that usually hold passwords or keys: `server.cfg`, `.env*`, `.ssh`, `.git-credentials`, `.npmrc`, `id_rsa*`, `*.key`, `*.pem`, `*.pfx`. Files that are not zipped are left out of the changelog too.
 
 ## Extra content
 
@@ -143,7 +143,7 @@ Always skipped: `.git`, `.github`, `.vscode`, `.idea`, `node_modules`, `*.zip`, 
 ../../docs/INSTALL.md -> README.md
 ```
 
-The zip then holds `my-script/`, `my-lib/` and `README.md`. Sources must sit inside the script's git repo or one of your script folders, so a `.portalbundle` that came with someone else's resource can not pull in files from elsewhere on your PC. The version is written only to the script's own `fxmanifest.lua`, and the GitHub step commits only the script folder.
+The zip then holds `my-script/`, `my-lib/` and `README.md`. Sources must sit inside the script's git repo or one of your script folders (never your home folder itself) and can not be secret files like `server.cfg`, `.env` or `.git`, so a `.portalbundle` that came with someone else's resource can not pull in files from elsewhere on your PC. The version is written only to the script's own `fxmanifest.lua`, and the GitHub step commits only the script folder.
 
 ## Update post
 
