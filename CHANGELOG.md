@@ -2,6 +2,20 @@
 
 All notable changes to FiveM Portal Push. Versions follow [semantic versioning](https://semver.org/); the newest is on top.
 
+## 1.1.3 - 2026-10-16
+
+### Security
+
+- On Windows, zip rules ignore upper and lower case like the file system does, so `Server.CFG` or `.ENV` are skipped too.
+- Extra content sources are resolved to their real path on disk before they are checked, and that same path is zipped. Windows aliases such as a trailing dot (`server.cfg.`), an NTFS stream (`server.cfg::$DATA`) or a short 8.3 name can no longer slip past the secret file check.
+- Names inside the zip can not use characters Windows rejects (`< > : " | ? *`) or end in a dot or space, so buyers can unpack it cleanly.
+- Only images picked with **Add images** can be uploaded with an update.
+- A key, token or webhook URL is not saved at all when Windows can not encrypt it.
+- Links opened from the app must be `https`.
+- Requests to the update API, Discord and Tebex give up after 30 seconds (2 minutes for uploads) instead of hanging the push.
+- The update API answer is checked: the `id` may only use letters, digits, `-` and `_`, and `linkLabel` loses brackets and line breaks before it goes into the Discord post. Server messages are cut at 300 characters.
+- Role tags are only sent for numeric role IDs, and the Discord post never pings `@everyone` or `@here`.
+
 ## 1.1.2 - 2026-10-16
 
 ### Security

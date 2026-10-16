@@ -4,7 +4,8 @@ import { join } from 'path'
 import type { SecretName } from '../shared/types'
 
 // Tokens and keys live apart from config.json, encrypted with the OS keychain
-// (DPAPI on Windows) when it is available. The renderer only sees which ones are set.
+// (DPAPI on Windows); nothing is saved when encryption is not available.
+// The renderer only sees which ones are set.
 const file = join(app.getPath('userData'), 'secrets.json')
 const names: SecretName[] = ['apiKey', 'botToken', 'webhookUrl']
 
@@ -21,7 +22,8 @@ export function setSecret(name: SecretName, value: string | null): void {
   const clean = value?.trim()
   data = { ...data }
   if (!clean) delete data[name]
-  else data[name] = safeStorage.isEncryptionAvailable() ? 'enc:' + safeStorage.encryptString(clean).toString('base64') : 'plain:' + clean
+  else if (!safeStorage.isEncryptionAvailable()) throw new Error('Windows can not encrypt secrets for this account right now, so the value was not saved.')
+  else data[name] = 'enc:' + safeStorage.encryptString(clean).toString('base64')
   writeFileSync(file, JSON.stringify(data, null, 2))
 }
 

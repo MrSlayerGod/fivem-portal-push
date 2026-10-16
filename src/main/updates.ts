@@ -24,7 +24,17 @@ async function readJson(res: Response): Promise<unknown> {
   }
 }
 
+// A target that never answers must not hang the push.
+const timeout = (ms = 30_000) => AbortSignal.timeout(ms)
+const uploadTimeout = 120_000
+
+const clamp = (text: string, max = 300) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+
 function errorText(body: unknown, fallback: string): string {
+  return clamp(rawErrorText(body, fallback))
+}
+
+function rawErrorText(body: unknown, fallback: string): string {
   if (body && typeof body === 'object') {
     const b = body as { error?: unknown; message?: unknown }
     if (typeof b.error === 'string') return b.error
@@ -43,7 +53,7 @@ export async function tebexPackages(refresh = false): Promise<TebexPackage[]> {
   const cached = tebexCache.get(token)
   if (cached && !refresh) return cached
 
-  const res = await fetch(`https://headless.tebex.io/api/accounts/${encodeURIComponent(token)}/packages`)
+  const res = await fetch(`https://headless.tebex.io/api/accounts/${encodeURIComponent(token)}/packages`, { signal: timeout() })
   const body = await readJson(res)
   if (!res.ok) throw new Error(`Tebex: ${errorText(body, `HTTP ${res.status}`)}. Check the public key in Settings.`)
   const list = ((body as { data?: { id: number; name: string }[] })?.data ?? [])
@@ -58,7 +68,7 @@ export async function tebexPackages(refresh = false): Promise<TebexPackage[]> {
 async function discordBot<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getSecret('botToken')
   if (!token) throw new Error('Add a Discord bot token in Settings.')
-  const res = await fetch(discordApi + path, { ...init, headers: { ...init.headers, Authorization: `Bot ${token}` } })
+  const res = await fetch(discordApi + path, { signal: timeout(init.body ? uploadTimeout : undefined), ...init, headers: { ...init.headers, Authorization: `Bot ${token}` } })
   const body = await readJson(res)
   if (!res.ok) throw new Error(`Discord: ${errorText(body, `HTTP ${res.status}`)}`)
   return body as T
@@ -118,6 +128,7 @@ interface Link {
 }
 
 function discordPayload(post: UpdatePost, title: string, version: string, link: Link | null) {
+  const roleId = post.roleId && /^\d{5,25}$/.test(post.roleId) ? post.roleId : null
   const v = version.replace(/^v/i, '')
   const linkLine = link?.label ? `\n\n🌐 [${link.label}](${link.url})` : ''
   const embeds: Record<string, unknown>[] = [
@@ -134,9 +145,9 @@ function discordPayload(post: UpdatePost, title: string, version: string, link: 
   embeds[embeds.length - 1].timestamp = new Date().toISOString()
 
   return {
-    content: post.roleId ? `<@&${post.roleId}>` : '',
+    content: roleId ? `<@&${roleId}>` : '',
     embeds,
-    allowed_mentions: { roles: post.roleId ? [post.roleId] : [] }
+    allowed_mentions: { parse: [], roles: roleId ? [roleId] : [] }
   }
 }
 
@@ -164,7 +175,7 @@ async function postToDiscord(post: UpdatePost, title: string, version: string, l
 
   const webhook = getSecret('webhookUrl')
   if (!webhook) throw new Error('Add a Discord webhook URL in Settings.')
-  const res = await fetch(`${webhook.replace(/\/$/, '')}?wait=true`, { method: 'POST', body: form })
+  const res = await fetch(`${webhook.replace(/\/$/, '')}?wait=true`, { method: 'POST', body: form, signal: timeout(uploadTimeout) })
   const body = await readJson(res)
   if (!res.ok) throw new Error(`Discord: ${errorText(body, `HTTP ${res.status}`)}`)
   return (body as { id: string }).id
@@ -184,7 +195,7 @@ const bareHost = (url: URL) => url.host.replace(/^www\./, '')
 async function fetchWithKey(url: string, init: RequestInit, key: string): Promise<Response> {
   let current = new URL(url)
   for (let hop = 0; hop < 4; hop++) {
-    const res = await fetch(current, { ...init, redirect: 'manual', headers: { ...init.headers, Authorization: `Bearer ${key}` } })
+    const res = await fetch(current, { signal: timeout(init.body ? uploadTimeout : undefined), ...init, redirect: 'manual', headers: { ...init.headers, Authorization: `Bearer ${key}` } })
     const location = res.status >= 300 && res.status < 400 ? res.headers.get('location') : null
     if (!location) return res
     const next = new URL(location, current)
@@ -252,11 +263,14 @@ interface ApiCreated {
 
 function readCreated(body: unknown, host: string): ApiCreated {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
-  if (typeof b.id !== 'string' && typeof b.id !== 'number') {
-    throw new Error(`${host} answered without an update id. The answer must be JSON with the new update's "id". ${docsHint}`)
+  // The id goes into the image URL path, so keep it to plain id characters.
+  if ((typeof b.id !== 'string' && typeof b.id !== 'number') || !/^[\w-]{1,64}$/.test(String(b.id))) {
+    throw new Error(`${host} answered without a usable update id. The answer must be JSON with the new update's "id": a number, or letters, digits, - and _ (up to 64). ${docsHint}`)
   }
   const url = typeof b.url === 'string' && /^https?:\/\//.test(b.url) ? b.url : null
-  return { id: b.id, url, linkLabel: url && typeof b.linkLabel === 'string' && b.linkLabel.trim() ? b.linkLabel.trim() : null }
+  // The label becomes a markdown link text in Discord: no brackets or line breaks.
+  const label = typeof b.linkLabel === 'string' ? clamp(b.linkLabel.replace(/[[\]()\r\n]/g, ' ').replace(/\s+/g, ' ').trim(), 100) : ''
+  return { id: b.id, url, linkLabel: url && label ? label : null }
 }
 
 async function postToApi(target: ApiTarget, post: UpdatePost, script: string, version: string, beta: boolean, progress: (m: string) => void): Promise<ApiCreated> {
@@ -334,7 +348,7 @@ export async function checkTarget(target: UpdateTarget): Promise<string> {
   }
   const webhook = getSecret('webhookUrl')
   if (!webhook) throw new Error('Add a Discord webhook URL in Settings.')
-  const res = await fetch(webhook)
+  const res = await fetch(webhook, { signal: timeout() })
   const body = await readJson(res)
   if (!res.ok) throw new Error(`Discord: ${errorText(body, `HTTP ${res.status}`)}`)
   return `Connected to webhook ${(body as { name?: string }).name ?? ''}`.trim()

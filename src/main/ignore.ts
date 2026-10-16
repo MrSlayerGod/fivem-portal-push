@@ -48,6 +48,9 @@ export function ignoreRules(dir: string): IgnoreRule[] {
   ]
 }
 
+// Windows and macOS file names ignore case, so "Server.CFG" must match server.cfg.
+const caseInsensitive = process.platform === 'win32' || process.platform === 'darwin'
+
 export type IgnoreMatcher = (relPath: string, isDir: boolean) => IgnoreRule | null
 
 export function compileRules(rules: IgnoreRule[]): IgnoreMatcher {
@@ -55,7 +58,7 @@ export function compileRules(rules: IgnoreRule[]): IgnoreMatcher {
     let p = rule.pattern.replace(/\\/g, '/').replace(/^\//, '')
     const dirOnly = p.endsWith('/')
     if (dirOnly) p = p.slice(0, -1)
-    const isMatch = picomatch(p, { dot: true, basename: !p.includes('/') })
+    const isMatch = picomatch(p, { dot: true, basename: !p.includes('/'), nocase: caseInsensitive })
     return { rule, dirOnly, isMatch }
   })
 

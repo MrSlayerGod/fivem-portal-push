@@ -123,13 +123,22 @@ handle('settings:secret', (name: SecretName, value: string | null) => {
 })
 handle('update:check', (target: UpdateTarget) => checkTarget(target))
 handle('update:post', (scriptPath: string, version: string, post: UpdatePost) => {
+  checkImages(post)
   log('update', `retry ${scriptPath} ${version} api=${post.api} discord=${post.discord}`)
   return postUpdate(post, basename(scriptPath), version, isBetaVersion(version), () => undefined)
 })
 handle('tebex:packages', (refresh: boolean) => tebexPackages(refresh))
 handle('discord:roles', (refresh: boolean) => discordRoles(refresh))
+// Only files the user picked in this dialog can be uploaded with an update.
+const pickedImages = new Set<string>()
+const checkImages = (post: UpdatePost | null): void => {
+  const unknown = post?.images.find((p) => !pickedImages.has(p))
+  if (unknown) throw new Error(`${basename(unknown)} was not picked with Add images`)
+}
+
 handle('images:pick', async (): Promise<UpdateImage[]> => {
   const res = await dialog.showOpenDialog(win!, { title: 'Add images to the update', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Images', extensions: imageExtensions }] })
+  for (const path of res.filePaths) pickedImages.add(path)
   return res.filePaths.map((path) => ({
     path,
     name: basename(path),
@@ -147,6 +156,7 @@ handle('settings:gitDefault', (value: boolean) =>
 
 handle('push:start', async (req: PushRequest) => {
   if (pushing) throw new Error('A push is already running')
+  checkImages(req.update)
   pushing = true
   try {
     log('push', `start ${req.scriptPath} -> asset ${req.assetId} version ${req.version} git=${req.git}`)
@@ -193,7 +203,7 @@ if (!demo && !app.requestSingleInstanceLock()) {
     })
 
     win.webContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url)
+      if (url.startsWith('https://')) shell.openExternal(url)
       return { action: 'deny' }
     })
 

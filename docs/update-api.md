@@ -130,9 +130,9 @@ Answer `200` or `201`:
 
 | Field | Type | Required | Used for |
 | --- | --- | --- | --- |
-| `id` | string or number | **yes** | Used in the image URLs. Without it the app reports that your answer is missing the id. |
+| `id` | string or number | **yes** | Used in the image URLs, so only letters, digits, `-` and `_`, up to 64 characters. Without a valid id the app reports that the answer has no usable id. |
 | `url` | string | no | Public page for this update. Must start with `http://` or `https://`. The Discord title links to it. |
-| `linkLabel` | string | no | When set together with `url`, the Discord post ends with a line `🌐 [linkLabel](url)`. |
+| `linkLabel` | string | no | When set together with `url`, the Discord post ends with a line `🌐 [linkLabel](url)`. Brackets and line breaks are removed and it is cut at 100 characters. |
 
 **Duplicates.** The same script and version can arrive twice, for example when the user presses **Post update again** after Discord failed. Answer `409` with a clear `error` message instead of saving a second copy.
 
@@ -162,7 +162,7 @@ Answer with a non-2xx status and a JSON body:
 { "error": "Pick the Tebex package for this update" }
 ```
 
-`message` is read too when there is no `error`. Short plain-text bodies work. HTML error pages are ignored, so the user sees the status instead of markup.
+`message` is read too when there is no `error`. Short plain-text bodies work. Messages longer than 300 characters are cut. HTML error pages are ignored, so the user sees the status instead of markup.
 
 What the user sees in the app:
 
@@ -171,8 +171,8 @@ What the user sees in the app:
 | `401` or `403` | `example.com did not accept the API key (HTTP 401 Unauthorized): <your error>. Check the key in Settings.` |
 | `404` or `405` | `example.com has no Update API at https://example.com/api/updates (HTTP 404 Not Found). Check the URL in Settings.` |
 | any other non-2xx | `example.com answered HTTP 409 Conflict: <your error>` |
-| `2xx` without `id` on create | `example.com answered without an update id. The answer must be JSON with the new update's "id". The format is in the Update API docs: …` |
-| no connection, DNS, TLS | `Could not reach example.com: <reason>` |
+| `2xx` without a valid `id` on create | `example.com answered without a usable update id. The answer must be JSON with the new update's "id": …` |
+| no connection, DNS, TLS, or no answer within 30 seconds (2 minutes for uploads) | `Could not reach example.com: <reason>` |
 
 Write `error` for the person pushing: say what to change, for example "Write the update notes" or "This package already has an update for v1.4.1".
 

@@ -106,7 +106,17 @@ async function allowedRoots(dir: string): Promise<string[]> {
 function secretSegment(roots: string[], real: string): string | null {
   const root = roots.filter((r) => isInside(r, real)).sort((a, b) => b.length - a.length)[0]
   const parts = (root ? relative(root, real) : real).split(/[\\/]/).filter(Boolean)
-  return parts.find((p) => isSecretName(p)) ?? null
+  // Windows ignores trailing dots and spaces, so "server.cfg." opens server.cfg.
+  return parts.find((p) => isSecretName(p.replace(/[. ]+$/, ''))) ?? null
+}
+
+/** The canonical path on disk (real case, long names, links followed), or null when it can not be resolved. */
+function canonical(p: string): string | null {
+  try {
+    return realpathSync.native(p)
+  } catch {
+    return null
+  }
 }
 
 /** Resolves .portalbundle entries to absolute paths and zip names. Sizes are filled in by the caller. */
@@ -121,9 +131,12 @@ export async function resolveBundle(dir: string): Promise<BundleItem[]> {
     const name = (spec.target ?? defaultName(spec.source)).replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
     const item: BundleItem = { ...spec, path, name, dir: false, files: 0, size: 0, error: null }
 
-    if (!existsSync(path)) item.error = 'Not found'
+    // A ':' after the drive letter is an NTFS stream like "server.cfg::$DATA".
+    const real = path.indexOf(':', 2) === -1 && existsSync(path) ? canonical(path) : null
+    if (!real) item.error = 'Not found'
     else {
-      const real = realpath(path)
+      // Zip exactly the path that was checked.
+      item.path = real
       item.dir = statSync(real).isDirectory()
       const secret = secretSegment(roots, real)
       if (isInside(appData, real) || !roots.some((root) => isInside(root, real))) item.error = 'Outside the git repo and your script folders'
@@ -131,7 +144,9 @@ export async function resolveBundle(dir: string): Promise<BundleItem[]> {
       else if (item.dir && isInside(real, realpath(dir))) item.error = 'Contains this script folder'
     }
     if (!item.error) {
-      if (!name || isAbsolute(name) || name.split('/').some((p) => p === '..' || p === '.' || p === '')) item.error = 'Invalid name in the zip'
+      // Names must also unpack cleanly on the buyer's Windows PC: no reserved characters or trailing dots.
+      if (!name || isAbsolute(name) || name.split('/').some((p) => p === '..' || p === '.' || p === '' || /[<>:"|?*\x00-\x1f]|[. ]$/.test(p)))
+        item.error = 'Invalid name in the zip'
       else if (used.has(name.toLowerCase())) item.error = `"${name}" is already used in the zip`
     }
     used.add(name.toLowerCase())
