@@ -98,6 +98,7 @@ export default function App() {
             setConfig(cfg)
             await rescan()
           }}
+          onSettings={setConfig}
         />
         <main className="flex min-w-0 flex-1 flex-col">
           {script && config ? (

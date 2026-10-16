@@ -1,13 +1,15 @@
 import { faArrowUpFromBracket, faRotate } from '@fortawesome/free-solid-svg-icons'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { AppConfig, AuthState, PushProgress, PushStepId, ScriptInfo } from '../../../shared/types'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { AppConfig, AuthState, PushProgress, PushStepId, ScriptInfo, UpdatePost } from '../../../shared/types'
 import { bumpVersion, compareVersions, isBetaVersion, latestVersion } from '../../../shared/version'
 import { formatChanges, useAssetLink, useGitChanges, useZipTree } from '@/hooks'
 import { errorMessage } from '@/lib'
 import AssetPicker from './AssetPicker'
+import BundleSection from './BundleSection'
 import PortalVersions from './PortalVersions'
 import PushSteps from './PushSteps'
 import Toolbar from './Toolbar'
+import UpdateSection, { newUpdateDraft, updateTargets, type UpdateDraft } from './UpdateSection'
 import VersionEditor from './VersionEditor'
 import ZipSection from './ZipSection'
 import { Button } from './ui/button'
@@ -33,12 +35,17 @@ export default function ScriptPanel({ script, config, auth, account, onAuthError
   const zip = useZipTree(script.path)
   const [version, setVersion] = useState<string | null>(null)
   const [changelog, setChangelog] = useState<string | null>(null)
-  const [useGit, setUseGit] = useState(config.git[script.name] ?? false)
+  const [gitChoice, setUseGit] = useState<boolean | null>(null)
+  const useGit = gitChoice ?? config.git[script.name] ?? config.gitDefault ?? false
   const [steps, setSteps] = useState<Partial<Record<PushStepId, PushProgress>> | null>(null)
   const [pushing, setPushing] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [draft, setDraft] = useState<UpdateDraft>(() => newUpdateDraft(config, script.name))
+  const [retrying, setRetrying] = useState(false)
+  const live = useRef(false)
+  const patchDraft = useCallback((patch: Partial<UpdateDraft>) => setDraft((d) => ({ ...d, ...patch })), [])
 
   const portalVersions = useMemo(() => link.detail?.versions?.map((v) => v.version) ?? [], [link.detail])
   const portalLatest = latestVersion(portalVersions)
@@ -61,28 +68,78 @@ export default function ScriptPanel({ script, config, auth, account, onAuthError
           ? { error: false, text: `This is lower than the newest portal version, ${portalLatest}.` }
           : null
 
-  useEffect(() => window.api.onPushProgress((p) => setSteps((s) => ({ ...s, [p.step]: p }))), [])
+  useEffect(
+    () =>
+      window.api.onPushProgress((p) => {
+        if (p.step === 'process' && p.status === 'done') live.current = true
+        setSteps((s) => ({ ...s, [p.step]: p }))
+      }),
+    []
+  )
 
-  const canPush = auth === 'loggedIn' && link.asset !== null && !issue?.error && !pushing
+  const targets = updateTargets(config, draft)
+  const updatePost = (): UpdatePost | null =>
+    targets.api || targets.discord
+      ? { api: targets.api, discord: targets.discord, package: draft.package, roleId: draft.roleId, notes: draft.notes, changedFiles: notes, images: draft.images.map((i) => i.path) }
+      : null
+  // A retry after a failed update post uses what was pushed, not the refreshed changelog.
+  const pushed = useRef({ version: value, changedFiles: notes })
+
+  const afterLive = async () => {
+    setVersion(null)
+    setChangelog(null)
+    await Promise.all([onPushed(), link.refresh(), git.reload(), zip.reload()])
+  }
+
+  const bundleBroken = zip.tree?.extras.some((e) => e.error) ?? false
+  const canPush = auth === 'loggedIn' && link.asset !== null && !issue?.error && !bundleBroken && !pushing
 
   const push = async () => {
     if (!canPush || !link.asset) return
     setPushing(true)
     setResult(null)
     setSteps({})
+    live.current = false
+    pushed.current = { version: value, changedFiles: notes }
     scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
     try {
-      await window.api.push({ scriptPath: script.path, assetId: link.asset.assetId, assetName: link.asset.assetName, version: value, changelog: notes, git: useGit && Boolean(script.gitRoot) })
+      await window.api.push({
+        scriptPath: script.path,
+        assetId: link.asset.assetId,
+        assetName: link.asset.assetName,
+        version: value,
+        changelog: notes,
+        git: useGit && Boolean(script.gitRoot),
+        update: updatePost()
+      })
       setResult({ ok: true, text: `${script.name} ${value} is live on the portal.` })
-      setVersion(null)
-      setChangelog(null)
-      await Promise.all([onPushed(), link.refresh(), git.reload(), zip.reload()])
+      setDraft((d) => ({ ...d, notes: '', images: [] }))
+      await afterLive()
     } catch (e) {
       setResult({ ok: false, text: errorMessage(e) })
       onAuthError(e)
-      link.refresh()
+      if (live.current) await afterLive()
+      else link.refresh()
     } finally {
       setPushing(false)
+    }
+  }
+
+  const retryUpdate = async () => {
+    const base = updatePost()
+    if (!base) return
+    const post = { ...base, changedFiles: pushed.current.changedFiles }
+    setRetrying(true)
+    setSteps((s) => ({ ...s, update: { step: 'update', status: 'running' } }))
+    try {
+      const message = await window.api.postUpdate(script.path, pushed.current.version, post)
+      setSteps((s) => ({ ...s, update: { step: 'update', status: 'done', message } }))
+      setResult({ ok: true, text: `${script.name} ${pushed.current.version} is live and the update is posted.` })
+      setDraft((d) => ({ ...d, notes: '', images: [] }))
+    } catch (e) {
+      setSteps((s) => ({ ...s, update: { step: 'update', status: 'error', message: errorMessage(e) } }))
+    } finally {
+      setRetrying(false)
     }
   }
 
@@ -109,7 +166,18 @@ export default function ScriptPanel({ script, config, auth, account, onAuthError
           </div>
 
           {steps && (
-            <Group header="Progress" footer={result && <span className={result.ok ? 'text-accent' : 'text-red'}>{result.text}</span>}>
+            <Group
+              header="Progress"
+              aside={
+                steps.update?.status === 'error' &&
+                !pushing && (
+                  <Button variant="plain" size="sm" icon={faRotate} busy={retrying} disabled={!updatePost()} onClick={retryUpdate}>
+                    Post update again
+                  </Button>
+                )
+              }
+              footer={result && <span className={result.ok ? 'text-accent' : 'text-red'}>{result.text}</span>}
+            >
               <PushSteps state={steps} />
             </Group>
           )}
@@ -167,6 +235,21 @@ export default function ScriptPanel({ script, config, auth, account, onAuthError
               await Promise.all([zip.reload(), git.reload()])
             }}
           />
+
+          <BundleSection
+            scriptName={script.name}
+            tree={zip.tree}
+            onAdd={async (kind) => {
+              await window.api.addToBundle(script.path, kind)
+              await zip.reload()
+            }}
+            onChange={async (specs) => {
+              await window.api.setBundle(script.path, specs)
+              await zip.reload()
+            }}
+          />
+
+          <UpdateSection scriptName={script.name} assetName={link.asset?.assetName ?? null} config={config} draft={draft} disabled={pushing || retrying} onDraft={patchDraft} />
 
           <Group header="GitHub" footer={script.gitRoot ? `Commits only this folder as "${script.name} ${value}" and pushes the current branch.` : 'This folder is not in a git repository.'}>
             <Row>

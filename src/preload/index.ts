@@ -1,6 +1,23 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { demoApi } from './demo'
-import type { AppConfig, ChangedFile, PortalAsset, PortalAssetDetail, PushProgress, PushRequest, ScriptInfo, ZipTree } from '../shared/types'
+import type {
+  AppConfig,
+  BundleSpec,
+  ChangedFile,
+  DiscordRole,
+  PortalAsset,
+  PortalAssetDetail,
+  PushProgress,
+  PushRequest,
+  ScriptInfo,
+  SecretName,
+  TebexPackage,
+  UpdateImage,
+  UpdatePost,
+  UpdateSettings,
+  UpdateTarget,
+  ZipTree
+} from '../shared/types'
 
 async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
   const res = await ipcRenderer.invoke(channel, ...args)
@@ -31,6 +48,16 @@ const api = {
   zipTree: (scriptPath: string) => call<ZipTree>('zip:tree', scriptPath),
   setLocalIgnore: (scriptPath: string, patterns: string[]) => call<void>('ignore:setLocal', scriptPath, patterns),
   setGlobalIgnore: (patterns: string[]) => call<AppConfig>('ignore:setGlobal', patterns),
+  setBundle: (scriptPath: string, specs: BundleSpec[]) => call<void>('bundle:set', scriptPath, specs),
+  addToBundle: (scriptPath: string, kind: 'folder' | 'file') => call<void>('bundle:add', scriptPath, kind),
+  setUpdateSettings: (patch: Partial<UpdateSettings>) => call<AppConfig>('settings:update', patch),
+  setSecret: (name: SecretName, value: string | null) => call<AppConfig>('settings:secret', name, value),
+  checkUpdateTarget: (target: UpdateTarget) => call<string>('update:check', target),
+  tebexPackages: (refresh = false) => call<TebexPackage[]>('tebex:packages', refresh),
+  discordRoles: (refresh = false) => call<DiscordRole[]>('discord:roles', refresh),
+  pickImages: () => call<UpdateImage[]>('images:pick'),
+  postUpdate: (scriptPath: string, version: string, post: UpdatePost) => call<string>('update:post', scriptPath, version, post),
+  setGitDefault: (value: boolean) => call<AppConfig>('settings:gitDefault', value),
   push: (req: PushRequest) => call<void>('push:start', req),
   openPath: (path: string) => call<string>('shell:open', path),
   openLog: () => call<string>('log:open'),

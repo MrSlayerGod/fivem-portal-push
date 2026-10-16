@@ -1,16 +1,20 @@
 import './paths'
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { existsSync } from 'fs'
-import { dirname, join, resolve } from 'path'
-import type { PushRequest } from '../shared/types'
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from 'electron'
+import { existsSync, statSync } from 'fs'
+import { basename, dirname, join, resolve } from 'path'
+import type { BundleSpec, PushRequest, SecretName, UpdateImage, UpdatePost, UpdateSettings, UpdateTarget } from '../shared/types'
 import { browserLogin, cancelBrowserLogin, extensionDir } from './browserLogin'
+import { readBundle, toSource, writeBundle } from './bundle'
 import { changedFiles, gitRoot } from './git'
 import { compileRules, ignoreRules, isExcluded, writeLocalPatterns, zipTree } from './ignore'
 import { assetDetail, AuthError, checkAuth, listAssets, login, logout } from './portal'
 import { push } from './push'
 import { takeScreenshots } from './screenshots'
 import { scanScripts } from './scripts'
+import { setSecret } from './secrets'
 import { getConfig, updateConfig } from './store'
+import { checkTarget, discordRoles, imageExtensions, postUpdate, tebexPackages, webhookPattern } from './updates'
+import { isBetaVersion } from '../shared/version'
 import { log, logFile } from './log'
 
 let win: BrowserWindow | null = null
@@ -88,6 +92,58 @@ handle('git:changes', async (scriptPath: string) => {
 handle('zip:tree', (scriptPath: string) => zipTree(scriptPath))
 handle('ignore:setLocal', (scriptPath: string, patterns: string[]) => writeLocalPatterns(scriptPath, patterns))
 handle('ignore:setGlobal', (patterns: string[]) => updateConfig((cfg) => (cfg.zipIgnore = [...new Set(patterns.map((p) => p.trim()).filter(Boolean))])))
+
+handle('bundle:set', (scriptPath: string, specs: BundleSpec[]) => writeBundle(scriptPath, specs))
+handle('bundle:add', async (scriptPath: string, kind: 'folder' | 'file') => {
+  const res = await dialog.showOpenDialog(win!, {
+    title: kind === 'folder' ? 'Add folders to the zip' : 'Add files to the zip',
+    defaultPath: dirname(scriptPath),
+    properties: [kind === 'folder' ? 'openDirectory' : 'openFile', 'multiSelections']
+  })
+  if (res.canceled || res.filePaths.length === 0) return
+  const specs = readBundle(scriptPath)
+  for (const p of res.filePaths) {
+    const source = toSource(scriptPath, p)
+    if (!specs.some((s) => s.source === source)) specs.push({ source, target: null })
+  }
+  await writeBundle(scriptPath, specs)
+})
+
+handle('settings:update', (patch: Partial<UpdateSettings>) =>
+  updateConfig((cfg) => {
+    cfg.update = { ...cfg.update, ...patch }
+  })
+)
+handle('settings:secret', (name: SecretName, value: string | null) => {
+  if (name === 'webhookUrl' && value?.trim() && !webhookPattern.test(value.trim())) {
+    throw new Error('This is not a Discord webhook URL. Copy it from Channel settings, Integrations, Webhooks.')
+  }
+  setSecret(name, value)
+  return getConfig()
+})
+handle('update:check', (target: UpdateTarget) => checkTarget(target))
+handle('update:post', (scriptPath: string, version: string, post: UpdatePost) => {
+  log('update', `retry ${scriptPath} ${version} api=${post.api} discord=${post.discord}`)
+  return postUpdate(post, basename(scriptPath), version, isBetaVersion(version), () => undefined)
+})
+handle('tebex:packages', (refresh: boolean) => tebexPackages(refresh))
+handle('discord:roles', (refresh: boolean) => discordRoles(refresh))
+handle('images:pick', async (): Promise<UpdateImage[]> => {
+  const res = await dialog.showOpenDialog(win!, { title: 'Add images to the update', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Images', extensions: imageExtensions }] })
+  return res.filePaths.map((path) => ({
+    path,
+    name: basename(path),
+    size: statSync(path).size,
+    thumb: nativeImage.createFromPath(path).resize({ height: 120 }).toDataURL()
+  }))
+})
+
+handle('settings:gitDefault', (value: boolean) =>
+  updateConfig((cfg) => {
+    cfg.gitDefault = value
+    cfg.git = {}
+  })
+)
 
 handle('push:start', async (req: PushRequest) => {
   if (pushing) throw new Error('A push is already running')

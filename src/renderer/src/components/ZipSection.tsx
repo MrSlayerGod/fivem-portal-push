@@ -62,7 +62,7 @@ export default function ZipSection({ scriptPath, config, tree, error, onLocalCha
   ) : saveError ? (
     <span className="text-red">{saveError}</span>
   ) : tree ? (
-    `${tree.includedFiles} files, ${formatBytes(tree.includedSize)} go into the zip. Rules for this script are saved to .portalignore in its folder. Always skipped: .git, node_modules, *.zip and editor folders.`
+    `${tree.includedFiles} files, ${formatBytes(tree.includedSize)} from this folder go into the zip. Rules for this script are saved to .portalignore in its folder. Always skipped: .git, node_modules, *.zip and editor folders.`
   ) : (
     'Reading files'
   )

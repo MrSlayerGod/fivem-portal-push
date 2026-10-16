@@ -45,4 +45,17 @@ export async function takeScreenshots(win: BrowserWindow): Promise<void> {
     await wait(150)
   }
   await shot('screenshot-zip.png')
+
+  await click('[role="dialog"] button', 'Done')
+  await wait(400)
+  const scrolled = await win.webContents.executeJavaScript(`(() => {
+    const h = [...document.querySelectorAll('h3')].find((e) => e.textContent === 'Update post')
+    h?.scrollIntoView({ block: 'start' })
+    return Boolean(h)
+  })()`)
+  if (!scrolled) throw new Error('Screenshot step failed: Update post section not found')
+  await shot('screenshot-update.png')
+
+  await click('[aria-label="Settings"]')
+  await shot('screenshot-settings.png')
 }

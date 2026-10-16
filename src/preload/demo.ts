@@ -1,4 +1,4 @@
-import type { AppConfig, ChangedFile, IgnoreRule, PortalAssetDetail, PushProgress, PushStepId, ScriptInfo, ZipEntry, ZipTree } from '../shared/types'
+import type { AppConfig, BundleItem, BundleSpec, ChangedFile, DiscordRole, TebexPackage, IgnoreRule, PortalAssetDetail, PushProgress, PushStepId, ScriptInfo, ZipEntry, ZipTree } from '../shared/types'
 import type { Api } from './index'
 
 const root = 'D:\\FiveM\\resources\\[tgiann]'
@@ -30,8 +30,23 @@ const config: AppConfig = {
   ),
   lastPush: { 'tgiann-phone': { version: '1.4.0', commit: null, at: days(6) }, 'tgiann-hud': { version: '2.3.0', commit: null, at: days(2) } },
   git: { 'tgiann-phone': true },
-  zipIgnore: ['*.psd']
+  gitDefault: false,
+  zipIgnore: ['*.psd'],
+  packages: {},
+  update: { apiDefault: true, discordDefault: true, apiUrl: 'https://tgiann.com/api/updates', tebexToken: 'demo', discordMode: 'bot', discordChannel: '813192868906532905', roleId: '2' },
+  secrets: { apiKey: true, botToken: true, webhookUrl: false }
 }
+
+const tebexDemo: TebexPackage[] = scripts.map(([name], i) => ({
+  id: 5100000 + i,
+  name: name.replace('tgiann-', 'TGIANN ').replace(/-(\w)/g, (_, c: string) => ' ' + c.toUpperCase()).replace(/ (\w)/g, (m) => m.toUpperCase())
+}))
+
+const rolesDemo: DiscordRole[] = [
+  { id: '1', name: 'Customer', color: 0x36ff9f },
+  { id: '2', name: 'Update ping', color: 0xff9230 },
+  { id: '3', name: 'Beta testers', color: 0x5865f2 }
+]
 
 const versionsFor = (name: string): PortalAssetDetail['versions'] => {
   if (name !== 'tgiann-phone') return [{ id: 1, version: scripts.find((s) => s[0] === name)![1], state: 'active', created_at: days(9), changelog: 'Fixes and improvements', is_release_candidate: false }]
@@ -98,7 +113,22 @@ function zipTree(): ZipTree {
   }
   const total = walk(treeSpec, '', 0)
   const rules: IgnoreRule[] = [{ pattern: '.git/', source: 'default' }, { pattern: '*.psd', source: 'global' }, local('docs/'), local('notes.txt')]
-  return { rules, entries, includedFiles: total.files, includedSize: total.size }
+  return { rules, entries, includedFiles: total.files, includedSize: total.size, extras }
+}
+
+const demoExtras: BundleItem[] = [
+  { source: '../tgiann-core', target: null, path: `${root}\tgiann-core`, name: 'tgiann-core', dir: true, files: 14, size: 86200, error: null },
+  { source: '../docs/INSTALL.md', target: null, path: 'D:\FiveM\resources\docs\INSTALL.md', name: 'INSTALL.md', dir: false, files: 1, size: 2100, error: null }
+]
+
+let extras: BundleItem[] = [demoExtras[1]]
+
+function setBundle(specs: BundleSpec[]): void {
+  extras = specs.flatMap((s) => {
+    const item = demoExtras.find((d) => d.source === s.source)
+    if (!item) return []
+    return [{ ...item, target: s.target, name: s.target ?? item.source.split('/').pop()! }]
+  })
 }
 
 const listeners = new Set<(p: PushProgress) => void>()
@@ -112,6 +142,7 @@ async function push(): Promise<void> {
     ['versions', 'Deleted oldest version 1.3.0'],
     ['upload', 'Uploaded'],
     ['process', 'Active on portal'],
+    ['update', 'Posted to tgiann.com and Discord'],
     ['git', 'Pushed']
   ]
   for (const [step, message] of steps) {
@@ -142,6 +173,26 @@ export const demoApi: Api = {
   zipTree: async () => zipTree(),
   setLocalIgnore: async () => undefined,
   setGlobalIgnore: async () => config,
+  setBundle: async (_, specs) => setBundle(specs),
+  addToBundle: async () => setBundle([...extras, ...demoExtras.filter((d) => !extras.some((e) => e.source === d.source))]),
+  setUpdateSettings: async (patch) => {
+    config.update = { ...config.update, ...patch }
+    return { ...config }
+  },
+  setSecret: async (name, value) => {
+    config.secrets = { ...config.secrets, [name]: Boolean(value) }
+    return { ...config }
+  },
+  checkUpdateTarget: async (target) => (target === 'tebex' ? `${tebexDemo.length} packages found` : target === 'api' ? 'Connected to TGIANN Store' : 'Connected to #updates, 3 roles'),
+  tebexPackages: async () => tebexDemo,
+  discordRoles: async () => rolesDemo,
+  pickImages: async () => [],
+  postUpdate: async () => 'Posted to tgiann.com and Discord',
+  setGitDefault: async (value) => {
+    config.gitDefault = value
+    config.git = {}
+    return { ...config }
+  },
   push,
   openPath: async () => '',
   openLog: async () => '',

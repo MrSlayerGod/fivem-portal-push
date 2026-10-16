@@ -11,6 +11,7 @@ const steps: { id: PushStepId; label: string }[] = [
   { id: 'versions', label: 'Free a version slot' },
   { id: 'upload', label: 'Upload to portal' },
   { id: 'process', label: 'Wait for portal processing' },
+  { id: 'update', label: 'Post the update' },
   { id: 'git', label: 'Commit and push to GitHub' }
 ]
 

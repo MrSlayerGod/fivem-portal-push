@@ -39,12 +39,60 @@ export interface LastPush {
   at: string
 }
 
+export type DiscordMode = 'webhook' | 'bot'
+export type SecretName = 'apiKey' | 'botToken' | 'webhookUrl'
+
+export interface UpdateSettings {
+  apiDefault: boolean
+  discordDefault: boolean
+  apiUrl: string
+  tebexToken: string
+  discordMode: DiscordMode
+  discordChannel: string
+  roleId: string | null
+}
+
+export interface TebexPackage {
+  id: number
+  name: string
+}
+
+export interface DiscordRole {
+  id: string
+  name: string
+  color: number
+}
+
+export interface UpdateImage {
+  path: string
+  name: string
+  size: number
+  thumb: string
+}
+
+export interface UpdatePost {
+  api: boolean
+  discord: boolean
+  package: TebexPackage | null
+  roleId: string | null
+  notes: string
+  changedFiles: string
+  images: string[]
+}
+
+export type UpdateTarget = 'api' | 'discord' | 'tebex'
+
 export interface AppConfig {
   roots: string[]
   mappings: Record<string, AssetMapping>
   lastPush: Record<string, LastPush>
   git: Record<string, boolean>
+  gitDefault: boolean
   zipIgnore: string[]
+  packages: Record<string, TebexPackage>
+  update: UpdateSettings
+  /** Which secrets are saved. The values never leave the main process. */
+  secrets: Record<SecretName, boolean>
 }
 
 export type IgnoreSource = 'default' | 'global' | 'local'
@@ -65,11 +113,26 @@ export interface ZipEntry {
   scanned: boolean
 }
 
+export interface BundleSpec {
+  source: string
+  target: string | null
+}
+
+export interface BundleItem extends BundleSpec {
+  path: string
+  name: string
+  dir: boolean
+  files: number
+  size: number
+  error: string | null
+}
+
 export interface ZipTree {
   rules: IgnoreRule[]
   entries: ZipEntry[]
   includedFiles: number
   includedSize: number
+  extras: BundleItem[]
 }
 
 export type AuthState = 'unknown' | 'checking' | 'loggedIn' | 'loggedOut'
@@ -81,9 +144,10 @@ export interface PushRequest {
   version: string
   changelog: string
   git: boolean
+  update: UpdatePost | null
 }
 
-export type PushStepId = 'manifest' | 'zip' | 'versions' | 'upload' | 'process' | 'git'
+export type PushStepId = 'manifest' | 'zip' | 'versions' | 'upload' | 'process' | 'update' | 'git'
 export type PushStepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error'
 
 export interface PushProgress {

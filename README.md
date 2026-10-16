@@ -4,7 +4,7 @@
 
 <p align="center">
   A Windows desktop app that turns "update the script on the Cfx.re Portal" into one button.<br>
-  It bumps the version in <code>fxmanifest.lua</code>, zips the resource, uploads it as a new portal version, and can commit and push the folder to GitHub.
+  It bumps the version in <code>fxmanifest.lua</code>, zips the resource, uploads it as a new portal version, posts the update notes to your site or Discord, and can commit and push the folder to GitHub.
 </p>
 
 > [!NOTE]
@@ -36,7 +36,9 @@ Shipping an update to a paid FiveM resource used to look like this: open `fxmani
   modified:   ui/build (delete the 'ui/build' folder before updating the 'ui/build' folder)
   ```
 - **Zip rules you can see.** Browse the resource as a tree and untick whatever should stay out of the zip. Rules are saved in a `.portalignore` file inside the resource, so they travel with git to every PC. Rules for all scripts live in the app.
+- **More than one folder in a zip.** Add other resources (a shared library, a bridge) or loose files like install notes to the same upload. They sit next to the script folder at the zip root.
 - **Remembers the portal asset.** Pick the matching portal asset once (exact name matches are linked automatically) and it is selected for you next time.
+- **Update post.** After the upload is live, post the update notes, changed files, package name, a role tag and images to your own site and/or Discord (webhook or bot).
 - **Optional GitHub step.** Commits only that resource folder as `<name> <version>` and pushes the current branch.
 - **Log in with the browser you already use.** No passwords and no copied cookies (see below).
 - **Clear errors.** Every step shows its own status, and everything goes to a log file you can open from the app.
@@ -52,6 +54,14 @@ Shipping an update to a paid FiveM resource used to look like this: open `fxmani
     <td align="center"><sub>Every push step with its own status</sub></td>
     <td align="center"><sub>Untick files and folders to keep them out of the zip</sub></td>
   </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshot-update.png" alt="Update post section with package, role tag and notes"></td>
+    <td width="50%"><img src="docs/screenshot-settings.png" alt="Settings window with GitHub, update post, API and Discord settings"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Post the update to your site and Discord with the push</sub></td>
+    <td align="center"><sub>Defaults and connections in Settings</sub></td>
+  </tr>
 </table>
 
 <sub>Screenshots use demo data. Regenerate them with <code>npm run screenshots</code>.</sub>
@@ -59,14 +69,17 @@ Shipping an update to a paid FiveM resource used to look like this: open `fxmani
 ## How it works
 
 <p align="center">
-  <img src="docs/flow.svg" alt="Push pipeline: pick a script, bump version, zip, free a slot, upload, GitHub" width="100%">
+  <img src="docs/flow.svg" alt="Push pipeline: pick a script, bump version, zip, free a slot, upload, update post, GitHub" width="100%">
 </p>
 
 1. **Pick a script** from the sidebar. The linked portal asset and its current versions load on the right.
 2. **Choose the version.** Patch, minor, major and beta buttons are calculated from the higher of the local and the portal version, or type your own.
-3. **Check the changelog** and the optional GitHub switch, then press **Push**.
-4. The app writes the version into `fxmanifest.lua`, zips the folder (the zip root is the resource name, as the portal expects), frees a version slot if needed, uploads the zip in 2 MB chunks and waits until the portal marks the version as active.
-5. If the GitHub switch is on, it commits only that folder and pushes.
+3. **Check the changelog**, the zip contents, the update post and the GitHub switch, then press **Push**.
+4. The app writes the version into `fxmanifest.lua`, zips the folder (the zip root is the resource name, as the portal expects, plus any extra content), frees a version slot if needed, uploads the zip in 2 MB chunks and waits until the portal marks the version as active.
+5. If an update post target is on, it sends the update notes to your API and/or Discord.
+6. If the GitHub switch is on, it commits only that folder and pushes.
+
+The gear button in the sidebar opens **Settings**: which switches start on for every script, and the connections for the update API, Discord and Tebex.
 
 The changelog is stored as the changelog of that portal version. The asset description is not touched.
 
@@ -116,18 +129,53 @@ ui/src/
 client/test.lua
 ```
 
-Always skipped: `.git`, `.github`, `.vscode`, `.idea`, `node_modules`, `*.zip`, `.gitignore`, `.portalignore`. Files that are not zipped are left out of the changelog too.
+Always skipped: `.git`, `.github`, `.vscode`, `.idea`, `node_modules`, `*.zip`, `.gitignore`, `.portalignore`, `.portalbundle`. Files that are not zipped are left out of the changelog too.
+
+## Extra content
+
+**Extra content → Add folder / Add file** puts more than the script folder in the zip. The list is saved to `<resource>/.portalbundle`, one entry per line, relative to the resource. Add `-> name` to give an entry another name or path inside the zip:
+
+```text
+# another resource, zipped with its own .portalignore
+../my-lib
+
+# a loose file at the zip root, renamed
+../../docs/INSTALL.md -> README.md
+```
+
+The zip then holds `my-script/`, `my-lib/` and `README.md`. The version is written only to the script's own `fxmanifest.lua`, and the GitHub step commits only the script folder.
+
+## Update post
+
+The **Update post** section on a script sends an update note after the portal upload is live. It has two targets, each with its own switch. **Settings** sets which ones start switched on.
+
+- **Update API:** your own site. Set the URL and key in Settings; see [docs/update-api.md](docs/update-api.md).
+- **Discord:** a webhook, or a bot token with a channel ID. A bot also lists the server roles you can tag. With a webhook you paste the role ID.
+
+The post contains the update notes you write, the changed files from the changelog, the Tebex package (picked from your store with the Tebex public key, matched by name the first time), the role to tag and up to 10 images. The Discord message is two embeds: the notes with the package name and version, and the changed files as a `diff` block. If the API answers with a page URL, the Discord title links to it.
+
+A failed post does not undo the upload. The progress list shows the error and a **Post update again** button.
+
+### Update API
+
+Any site can take the updates: it needs three small endpoints (a connection test, create an update, add an image) behind a Bearer key. The requests, every field, the answers the app expects and example servers are in **[docs/update-api.md](docs/update-api.md)**.
 
 ## Your data
 
 | What | Where |
 | --- | --- |
-| Settings, asset links, rules for all scripts | `%APPDATA%/fivem-portal-push/config.json` |
+| Settings, asset links, rules for all scripts, Tebex package links | `%APPDATA%/fivem-portal-push/config.json` |
+| API key, Discord bot token and webhook URL, encrypted with Windows DPAPI | `%APPDATA%/fivem-portal-push/secrets.json` |
 | Log file | `%APPDATA%/fivem-portal-push/logs/portal-push.log` |
 | Portal session | the app's own browser profile in the same folder |
 | Zip rules for one script | `<resource>/.portalignore` |
+| Extra content for one script | `<resource>/.portalbundle` |
 
-Nothing is sent anywhere except to `portal-api.cfx.re`, `portal.cfx.re`, `forum.cfx.re` and your own git remote. During login the app listens on `127.0.0.1:47821` for a few minutes so the extension can hand over the code. The log contains request paths and status codes, never cookie values.
+Nothing is sent anywhere except to `portal-api.cfx.re`, `portal.cfx.re`, `forum.cfx.re`, your own git remote and, only when you set them up, your update API, `discord.com` and `headless.tebex.io`. During login the app listens on `127.0.0.1:47821` for a few minutes so the extension can hand over the code. The log contains request paths and status codes, never cookie values.
+
+## Changelog
+
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Development
 
@@ -163,7 +211,7 @@ Stack: Electron, electron-vite, React 19, TypeScript, Tailwind CSS v4, Radix UI,
 
 Publishing a GitHub release builds the app automatically:
 
-1. Create a release with a tag like `v1.2.0` (or `v1.3.0-beta.1`) and publish it.
+1. Add the version to [CHANGELOG.md](CHANGELOG.md), then create a release with a tag like `v1.2.0` (or `v1.3.0-beta.1`) and publish it. Use the changelog section as the release notes.
 2. The [Release workflow](.github/workflows/release.yml) takes the version from the tag, writes it into `package.json` and the extension manifest, type-checks, builds on Windows and attaches the installer, the portable exe and the extension zip to the release.
 
 To rebuild an existing release, run the workflow by hand from the Actions tab and enter its tag.

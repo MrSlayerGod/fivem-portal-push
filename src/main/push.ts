@@ -6,9 +6,12 @@ import { commitAndPush, gitRoot, headCommit } from './git'
 import { readManifestVersion, writeManifestVersion } from './manifest'
 import { assetDetail, completeUpload, deleteVersion, startUpload, uploadChunk } from './portal'
 import { updateConfig } from './store'
+import { postUpdate } from './updates'
 import { zipResource } from './zip'
 
 const chunkSize = 2 * 1024 * 1024
+
+class UpdatePostError extends Error {}
 const processTimeout = 5 * 60 * 1000
 
 export async function push(req: PushRequest, emit: (p: PushProgress) => void): Promise<void> {
@@ -33,7 +36,7 @@ export async function push(req: PushRequest, emit: (p: PushProgress) => void): P
     step('zip', 'running')
     const zip = await zipResource(req.scriptPath)
     zipPath = zip.path
-    step('zip', 'done', `${zip.files} files, ${(zip.size / 1024 / 1024).toFixed(2)} MB`)
+    step('zip', 'done', `${zip.files} files${zip.extras ? ` with ${zip.extras} extra ${zip.extras === 1 ? 'item' : 'items'}` : ''}, ${(zip.size / 1024 / 1024).toFixed(2)} MB`)
 
     step('versions', 'running')
     const detail = await assetDetail(req.assetId)
@@ -89,8 +92,26 @@ export async function push(req: PushRequest, emit: (p: PushProgress) => void): P
     updateConfig((cfg) => {
       cfg.mappings[name] = { assetId: req.assetId, assetName: req.assetName }
       cfg.lastPush[name] = { version: req.version, commit: head, at: new Date().toISOString() }
-      cfg.git[name] = req.git
+      if (req.update?.package) cfg.packages[name] = req.update.package
+      if (req.update?.discord) cfg.update.roleId = req.update.roleId
+      if (!repo) return
+      if (req.git === cfg.gitDefault) delete cfg.git[name]
+      else cfg.git[name] = req.git
     })
+
+    // A failed update post must not stop the git step: the portal version is already live.
+    let updateError: string | null = null
+    if (req.update && (req.update.api || req.update.discord)) {
+      step('update', 'running')
+      try {
+        step('update', 'done', await postUpdate(req.update, name, req.version, beta, (m) => step('update', 'running', m)))
+      } catch (e) {
+        updateError = e instanceof Error ? e.message : String(e)
+        step('update', 'error', updateError)
+      }
+    } else {
+      step('update', 'skipped')
+    }
 
     if (req.git && repo) {
       step('git', 'running')
@@ -102,8 +123,11 @@ export async function push(req: PushRequest, emit: (p: PushProgress) => void): P
     } else {
       step('git', 'skipped')
     }
+
+    if (updateError) throw new UpdatePostError(`The version is live on the portal, but the update post failed. ${updateError}`)
   } catch (e) {
-    step(current, 'error', e instanceof Error ? e.message : String(e))
+    // The update step already shows its own error.
+    if (!(e instanceof UpdatePostError)) step(current, 'error', e instanceof Error ? e.message : String(e))
     throw e
   } finally {
     if (zipPath) await rm(zipPath, { force: true })

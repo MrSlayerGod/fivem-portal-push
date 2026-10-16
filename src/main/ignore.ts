@@ -3,11 +3,12 @@ import { readdir, stat, writeFile } from 'fs/promises'
 import { join } from 'path'
 import picomatch from 'picomatch'
 import type { IgnoreRule, ZipEntry, ZipTree } from '../shared/types'
+import { bundleFile, resolveBundle } from './bundle'
 import { getConfig } from './store'
 
 export const ignoreFile = '.portalignore'
 
-export const defaultIgnore = ['.git/', '.github/', '.vscode/', '.idea/', 'node_modules/', '*.zip', ignoreFile, '.gitignore', '.DS_Store', 'Thumbs.db']
+export const defaultIgnore = ['.git/', '.github/', '.vscode/', '.idea/', 'node_modules/', '*.zip', ignoreFile, bundleFile, '.gitignore', '.DS_Store', 'Thumbs.db']
 
 function readLines(dir: string): string[] {
   const file = join(dir, ignoreFile)
@@ -54,9 +55,7 @@ export function compileRules(rules: IgnoreRule[]): IgnoreMatcher {
   }
 }
 
-export async function zipTree(dir: string): Promise<ZipTree> {
-  const rules = ignoreRules(dir)
-  const match = compileRules(rules)
+async function scanDir(dir: string, match: IgnoreMatcher): Promise<{ entries: ZipEntry[]; size: number; files: number }> {
   const entries: ZipEntry[] = []
 
   async function walk(abs: string, rel: string, depth: number): Promise<{ size: number; files: number }> {
@@ -94,7 +93,31 @@ export async function zipTree(dir: string): Promise<ZipTree> {
   }
 
   const total = await walk(dir, '', 0)
-  return { rules, entries, includedFiles: total.files, includedSize: total.size }
+  return { entries, ...total }
+}
+
+export async function zipTree(dir: string): Promise<ZipTree> {
+  const rules = ignoreRules(dir)
+  const main = await scanDir(dir, compileRules(rules))
+
+  const extras = resolveBundle(dir)
+  for (const item of extras) {
+    if (item.error) continue
+    try {
+      if (item.dir) {
+        const sub = await scanDir(item.path, compileRules(ignoreRules(item.path)))
+        item.size = sub.size
+        item.files = sub.files
+      } else {
+        item.size = (await stat(item.path)).size
+        item.files = 1
+      }
+    } catch (e) {
+      item.error = e instanceof Error ? e.message : String(e)
+    }
+  }
+
+  return { rules, entries: main.entries, includedFiles: main.files, includedSize: main.size, extras }
 }
 
 export function isExcluded(match: IgnoreMatcher, relPath: string): boolean {

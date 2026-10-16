@@ -8,6 +8,7 @@ import { compareVersions } from '../../../shared/version'
 import { cn } from '@/lib'
 import FoldersButton from './FoldersButton'
 import Logo from './Logo'
+import SettingsButton from './SettingsButton'
 import SortButton, { type SortKey } from './SortButton'
 import { Button } from './ui/button'
 import { Segmented } from './ui/segmented'
@@ -22,11 +23,12 @@ interface Props {
   onRescan: () => void
   onAddRoot: () => void
   onConfig: (cfg: AppConfig) => void
+  onSettings: (cfg: AppConfig) => void
 }
 
 type Filter = 'all' | 'changed' | 'linked'
 
-export default function Sidebar({ config, scripts, scanning, selected, onSelect, onRescan, onAddRoot, onConfig }: Props) {
+export default function Sidebar({ config, scripts, scanning, selected, onSelect, onRescan, onAddRoot, onConfig, onSettings }: Props) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useLocalStorageState<SortKey>('sidebar-sort', { defaultValue: 'name' })
@@ -64,17 +66,18 @@ export default function Sidebar({ config, scripts, scanning, selected, onSelect,
 
   return (
     <aside className="flex w-[300px] shrink-0 flex-col border-r border-separator/60 bg-group">
-      <div className="flex h-[52px] shrink-0 items-center justify-between pr-3 pl-5">
+      <div className="flex h-[52px] shrink-0 items-center justify-between gap-2 pr-2 pl-4">
         <span className="flex min-w-0 items-center gap-2">
           <Logo size={22} />
-          <span className="truncate text-headline font-semibold">FiveM Portal Push</span>
+          <span className="truncate text-body font-semibold">FiveM Portal Push</span>
         </span>
-        <div className="flex items-center">
+        <div className="flex shrink-0 items-center [&>button]:size-7">
           <Tooltip content="Rescan folders">
             <Button variant="plain" size="icon" icon={faRotate} aria-label="Rescan folders" onClick={onRescan} className={scanning ? '[&_svg]:animate-spin' : ''} />
           </Tooltip>
           <SortButton sort={sort} changedFirst={changedFirst} onSort={setSort} onChangedFirst={setChangedFirst} />
           <FoldersButton roots={config?.roots ?? []} onAdd={onAddRoot} onConfig={onConfig} />
+          <SettingsButton config={config} onConfig={onSettings} />
         </div>
       </div>
 

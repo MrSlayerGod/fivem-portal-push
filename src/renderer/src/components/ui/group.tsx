@@ -6,12 +6,14 @@ export function Group({
   footer,
   aside,
   className,
+  boxClassName,
   children
 }: {
   header?: ReactNode
   footer?: ReactNode
   aside?: ReactNode
   className?: string
+  boxClassName?: string
   children: ReactNode
 }) {
   return (
@@ -22,7 +24,7 @@ export function Group({
           {aside}
         </div>
       )}
-      <div className="overflow-hidden rounded-[10px] bg-group">{children}</div>
+      <div className={cn('overflow-hidden rounded-[10px] bg-group', boxClassName)}>{children}</div>
       {footer && <p className="mt-1.5 px-4 text-caption text-label-2">{footer}</p>}
     </section>
   )
