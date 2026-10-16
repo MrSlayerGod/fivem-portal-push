@@ -2,6 +2,12 @@
 
 All notable changes to FiveM Portal Push. Versions follow [semantic versioning](https://semver.org/); the newest is on top.
 
+## 1.1.1 - 2026-10-16
+
+### Security
+
+- Extra content sources from `.portalbundle` must sit inside the script's git repo or one of your script folders, and never in the app's own data folder. Links that point outside are followed and checked too. Before this, a `.portalbundle` that came with someone else's resource could add any file on your PC to the portal upload.
+
 ## 1.1.0 - 2026-10-16
 
 ### Added

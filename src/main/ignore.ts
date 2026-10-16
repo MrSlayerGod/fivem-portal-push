@@ -100,7 +100,7 @@ export async function zipTree(dir: string): Promise<ZipTree> {
   const rules = ignoreRules(dir)
   const main = await scanDir(dir, compileRules(rules))
 
-  const extras = resolveBundle(dir)
+  const extras = await resolveBundle(dir)
   for (const item of extras) {
     if (item.error) continue
     try {

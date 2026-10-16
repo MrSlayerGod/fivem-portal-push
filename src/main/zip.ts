@@ -8,7 +8,7 @@ import { compileRules, ignoreRules } from './ignore'
 
 export async function zipResource(dir: string): Promise<{ path: string; files: number; size: number; extras: number }> {
   const name = basename(dir)
-  const extras = resolveBundle(dir)
+  const extras = await resolveBundle(dir)
   const invalid = bundleError(extras)
   if (invalid) throw new Error(invalid)
 
